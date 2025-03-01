@@ -1,0 +1,1 @@
+screen.blit(text, text_rect)
