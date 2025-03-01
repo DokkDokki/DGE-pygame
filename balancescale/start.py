@@ -15,10 +15,7 @@ pygame.mixer.music.play(-1)
 # Main game loop
 running = True
 while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
+    
     # Draw the background
     display.screen.blit(display.background, (0, 0))
 
@@ -27,7 +24,12 @@ while running:
 
     # Update the display
     display.pygame.display.flip()
-
-# Quit Pygame
+    
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+            
+# Quit pygame and exit program after the main loop ends
 pygame.quit()
 sys.exit()
+quit()

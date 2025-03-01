@@ -1,8 +1,5 @@
 import pygame
 
-#Initialize the module
-pygame.init()
-
 #Set the window's title
 pygame.display.set_caption('Balance Scale')
 
