@@ -5,12 +5,12 @@ import sys
 pygame.init()
 
 # Import initialize module
-from initialize import display, caption, text
+from initialize import display, caption
 
 # Set up font and text
 font = pygame.font.Font("balancescale/assets/fonts/Montserrat-VariableFont_wght.ttf", 60)
 text = font.render("Kaita is gay", True, (0, 0, 0))
-text_rect = text.get_rect(center=(width // 2, height // 2))
+text_rect = text.get_rect(center=(display.width // 2, display.height // 2))
 
 #Load Background Music
 pygame.mixer.music.load('balancescale/assets/music/06052021_1_loading_screen_fresh_air_saturation.mp3')
@@ -24,10 +24,10 @@ while running:
             running = False
 
     # Draw the background
-    screen.blit(background, (0, 0))
+    display.screen.blit(display.background, (0, 0))
 
     # Draw the text on the screen
-    screen.blit(text, text_rect)
+    display.screen.blit(text, text_rect)
 
     # Update the display
     pygame.display.flip()
