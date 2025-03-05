@@ -1,1 +1,0 @@
-display.screen.blit(draw.scale_image, (draw.scale_x, draw.scale_y))
