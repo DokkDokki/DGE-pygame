@@ -5,30 +5,24 @@ from utils import constants
 
 class Weight:
     def __init__(self, space, position, mass):
-        self.space = space
-        self.position = position
         self.mass = mass
-        self.radius = constants.WEIGHT_SIZES.get(mass, 10)  # Default radius if mass not found
-
-        self.body = pymunk.Body(mass, 100)  # Mass, Inertia
+        self.body = pymunk.Body(mass, pymunk.moment_for_circle(mass, 0, 10))
         self.body.position = position
-        self.shape = pymunk.Circle(self.body, self.radius)
-        self.shape.density = 1
-        self.space.add(self.body, self.shape)
+        self.shape = pymunk.Circle(self.body, 10)
+        self.shape.elasticity = 0.95
+        space.add(self.body, self.shape)
 
-    def draw(self, screen, draw_options):
-        # Pymunk's debug draw handles most of the drawing
-        pass
+    def draw(self, screen):
+        x, y = self.body.position
+        pygame.draw.circle(screen, (0, 0, 255), (int(x), int(y)), 10)
 
     def remove(self):
         self.space.remove(self.body, self.shape)
 
-def create_initial_weights(space, scale, num_weights):
-    """Creates a list of initial weights on one side of the scale."""
+def create_initial_weights(space, pivot_x, pivot_y, scale_size, count):
     weights = []
-    for _ in range(num_weights):
-        mass = random.choice(constants.BIG_WEIGHTS)
-        position = scale.get_arm_position("left") + (random.uniform(-20, 20), -50)  # Slightly random position above the arm
-        weight = Weight(space, position, mass)
+    for _ in range(count):
+        position = (pivot_x - scale_size // 2 + random.uniform(-20, 20), pivot_y - 20)
+        weight = Weight(space, position, random.uniform(1, 3))
         weights.append(weight)
     return weights

@@ -1,24 +1,30 @@
 import pygame
 import pymunk
-import pymunk.pygame_util
 import sys
 import random
 
-from objects import draw  # Import the draw module
-from objects.scale import BalanceScale  # Import BalanceScale
 from objects.weight import Weight, create_initial_weights
 from ui.buttons import Button
 from ui.status import StatusWindow
 from ui.messages import NotificationMessage
 from utils import logger, constants
 
+# Constants
+SCREEN_WIDTH = 1200
+SCREEN_HEIGHT = 800
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+
 def main():
     # Initialize Pygame
     pygame.init()
 
     # Screen dimensions
-    screen_width = 1200
-    screen_height = 800
+    screen_width = SCREEN_WIDTH
+    screen_height = SCREEN_HEIGHT
     screen = pygame.display.set_mode((screen_width, screen_height))
     pygame.display.set_caption("Balance Scale Simulation")
 
@@ -26,15 +32,13 @@ def main():
     space = pymunk.Space()
     space.gravity = (0, 981)
 
-    # Pymunk draw options
-    draw_options = pymunk.pygame_util.DrawOptions(screen)
-
     # --- Game Objects ---
-    scale_size = 100  # Initial scale size
-    scale = BalanceScale(space, (screen_width / 2, screen_height / 3), scale_size)
+    scale_size = 250  # Adjust the size to change the length of the beam
+    pivot_x = screen_width // 2
+    pivot_y = screen_height // 3
 
     # Initial weights on the left side
-    initial_weights = create_initial_weights(space, scale, random.randint(1, 3))
+    initial_weights = create_initial_weights(space, pivot_x, pivot_y, scale_size, random.randint(1, 3))
 
     # --- Game state ---
     running = True
@@ -66,29 +70,20 @@ def main():
             log.info(f"Undo: Removed weight {last_weight.mass} kg")
 
     def reset_simulation():
-        nonlocal small_weights, scale, initial_weights, space
+        nonlocal small_weights, initial_weights, space
 
         # Remove all added weights
         for weight in small_weights:
             space.remove(weight.body, weight.shape)
         small_weights = []
 
-        # Remove the scale
-        space.remove(scale.beam_body, scale.beam_shape)
-        space.remove(scale.base_body, scale.base_shape)
-        space.remove(scale.pivot_body, scale.pivot_shape)
-        space.remove(scale.pivot_joint, scale.limit_joint)
-
         # Remove initial weights
         for weight in initial_weights:
             space.remove(weight.body, weight.shape)
         initial_weights = []
 
-        # Create a new scale
-        scale = BalanceScale(space, (screen_width / 2, screen_height / 3), scale_size)
-
         # Re-create initial weights
-        initial_weights = create_initial_weights(space, scale, random.randint(1, 3))
+        initial_weights = create_initial_weights(space, pivot_x, pivot_y, scale_size, random.randint(1, 3))
 
         log.info("Simulation reset")
 
@@ -126,8 +121,23 @@ def main():
     status_window = StatusWindow(700, 600, 400, 90) # Adjusted height
     notification_message = NotificationMessage(100, 100, "Welcome to the Balance Scale Simulation!")
 
-    # Setup Pymunk objects
-    draw.setup(space, screen_width, screen_height)  # Initialize the balance scale
+    # Function to draw the balance scale
+    def draw_balance_scale():
+        # Draw the pivot
+        pygame.draw.circle(screen, BLACK, (pivot_x, pivot_y), 10)
+
+        # Draw the beam
+        left_end = (pivot_x - scale_size // 2, pivot_y)
+        right_end = (pivot_x + scale_size // 2, pivot_y)
+        pygame.draw.line(screen, BLACK, left_end, right_end, 10)
+
+        # Draw the left and right pans
+        pan_width = 50
+        pan_height = 10
+        left_pan = (left_end[0] - pan_width // 2, left_end[1] + pan_height)
+        right_pan = (right_end[0] - pan_width // 2, right_end[1] + pan_height)
+        pygame.draw.rect(screen, BLACK, (*left_pan, pan_width, pan_height))
+        pygame.draw.rect(screen, BLACK, (*right_pan, pan_width, pan_height))
 
     # --- Main Game Loop ---
     while running:
@@ -144,8 +154,7 @@ def main():
                 # Add a weight on the right side with left click
                 if event.button == 1:  # Left click
                     mass = object_size
-                    arm_position = scale.get_arm_position("right")
-                    position = (arm_position.x + random.uniform(-20, 20), arm_position.y - 20)
+                    position = (pivot_x + scale_size // 2 + random.uniform(-20, 20), pivot_y - 20)
                     weight = Weight(space, position, mass)
                     small_weights.append(weight)
                     log.info(f"Added weight {mass} kg to the right side")
@@ -153,8 +162,7 @@ def main():
                 # Add a weight on the left side with right click
                 elif event.button == 3:  # Right click
                     mass = object_size
-                    arm_position = scale.get_arm_position("left")
-                    position = (arm_position.x + random.uniform(-20, 20), arm_position.y - 20)
+                    position = (pivot_x - scale_size // 2 + random.uniform(-20, 20), pivot_y - 20)
                     weight = Weight(space, position, mass)
                     small_weights.append(weight)
                     log.info(f"Added weight {mass} kg to the left side")
@@ -170,12 +178,14 @@ def main():
                     set_object_type("big")  # Select big size
 
         # --- Drawing ---
-        screen.fill(constants.WHITE)  # Clear the screen
+        screen.fill(WHITE)  # Clear the screen
 
-        # Draw game objects
-        scale.draw(screen, draw_options)
+        # Draw the balance scale
+        draw_balance_scale()
+
+        # Draw weights
         for weight in initial_weights + small_weights:
-            weight.draw(screen, draw_options)
+            weight.draw(screen)
 
         # Draw UI elements
         start_button.draw(screen)
@@ -190,17 +200,17 @@ def main():
         # Draw the selected object type
         object_type_text = f"Selected Size: {object_type.capitalize()}"
         font = pygame.font.Font(None, 36)
-        object_type_surface = font.render(object_type_text, True, constants.BLACK)
+        object_type_surface = font.render(object_type_text, True, BLACK)
         screen.blit(object_type_surface, (screen_width - 300, 20))  # Adjusted position to top right
 
         # Determine stabilization state
         weight_difference = abs(total_weight - sum(w.mass for w in initial_weights))
         if weight_difference < 1:
-            stabilization_color = constants.GREEN
+            stabilization_color = GREEN
         elif weight_difference < 3:
             stabilization_color = constants.YELLOW
         else:
-            stabilization_color = constants.RED
+            stabilization_color = RED
 
         # Draw stabilization color indicator
         pygame.draw.circle(screen, stabilization_color, (screen_width - 350, 50), 20)  # Adjusted position to avoid overlap
@@ -209,7 +219,7 @@ def main():
 
         # --- Physics Update ---
         if not paused:
-            draw.draw(space, screen, draw_options)  # Step the simulation
+            space.step(1 / 60.0)  # Step the simulation
 
         # --- Update Display ---
         pygame.display.flip()

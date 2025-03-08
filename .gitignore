@@ -1,2 +1,4 @@
 /.git/lfs
 *.log
+/balancescale_pymunk
+*.txt
