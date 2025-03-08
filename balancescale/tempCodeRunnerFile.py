@@ -1,1 +1,1 @@
-initial_weights
+BUTTON_TEXT_COLOR
