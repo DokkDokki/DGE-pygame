@@ -8,7 +8,7 @@ from constants import *
 pygame.init()
 
 # Load and scale the center image
-center_image = pygame.image.load("balancescale/assets/images/Balance.png")
+center_image = pygame.image.load("balancescale/assets/images/balancescale.png")
 center_image = pygame.transform.scale(center_image, (350, 350))
 center_image_rect = center_image.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
 
