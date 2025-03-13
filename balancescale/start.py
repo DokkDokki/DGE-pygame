@@ -1,5 +1,6 @@
 import pygame
 import sys
+import loading  # Import the loading module
 from initialize.display import screen, background
 from constants import *
 
@@ -7,40 +8,62 @@ from constants import *
 pygame.init()
 
 # Load and scale the center image
-center_image = pygame.image.load("balancescale/assets/images/balancescale.png")
-center_image = pygame.transform.scale(center_image, (200, 200))
+center_image = pygame.image.load("balancescale/assets/images/Balance.png")
+center_image = pygame.transform.scale(center_image, (350, 350))
 center_image_rect = center_image.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
 
 # Set up font and text
-font = pygame.font.Font("balancescale/assets/fonts/Montserrat-VariableFont_wght.ttf", 60)
-text = font.render("Balance Scale", True, (0, 0, 0))
+font = pygame.font.Font("balancescale/assets/fonts/MISHIMISHI-BLOCK.otf", 97)
+text = font.render("バランススケール", True, (255, 255, 255))
+text_stroke = font.render("バランススケール", True, (0, 0, 0))
 text_rect = text.get_rect(midtop=(screen.get_width() // 2, 50))
 
-# Button properties and functions
-button_width = 200
-button_height = 100
-button_x = screen.get_width() // 2 - button_width // 2
-button_y = screen.get_height() // 2 - button_height // 2 + 250
+# Create a new surface for the text with stroke
+text_surface = pygame.Surface((text_rect.width + 4, text_rect.height + 4), pygame.SRCALPHA)
+text_surface.fill((0, 0, 0, 0))  # Fill with transparent color
 
-font = pygame.font.Font("balancescale/assets/fonts/Montserrat-VariableFont_wght.ttf", 48)
+# Blit the stroke text onto the surface
+for dx, dy in [(-6, 0), (6, 0), (0, -6), (0, 6)]:
+    text_surface.blit(text_stroke, (2 + dx, 2 + dy))
 
-# Define button colors
-BUTTON_COLOR = (200, 200, 200)
-BUTTON_HOVER_COLOR = (150, 150, 150)
-BUTTON_TEXT_COLOR = (0, 0, 0)
+# Blit the main text onto the surface
+text_surface.blit(text, (2, 2))
 
-def draw_button(surface, text, x, y, width, height, color):
-    pygame.draw.rect(surface, color, (x, y, width, height))
-    pygame.draw.rect(surface, (0, 0, 0), (x, y, width, height), 2)
-    text_surface = font.render(text, True, BUTTON_TEXT_COLOR)
-    text_rect = text_surface.get_rect(center=(x + width // 2, y + height // 2))
-    surface.blit(text_surface, text_rect)
+# Load the button image
+button_image = pygame.image.load("balancescale/assets/images/button.png")
+button_image = pygame.transform.scale(button_image, (300, 210))
+button_rect = button_image.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2 + 250))
+
+# Render the button text with stroke
+button_font = pygame.font.Font("balancescale/assets/fonts/MISHIMISHI-BLOCK.otf", 40)
+button_text = button_font.render("スタート", True, (255, 255, 255))
+button_text_stroke = button_font.render("スタート", True, (0, 0, 0))
+button_text_rect = button_text.get_rect(center=(button_image.get_width() // 2, button_image.get_height() // 2))
+
+# Create a new surface for the button text with stroke
+button_text_surface = pygame.Surface((button_text_rect.width + 4, button_text_rect.height + 4), pygame.SRCALPHA)
+button_text_surface.fill((0, 0, 0, 0))  # Fill with transparent color
+
+# Blit the stroke text onto the surface
+for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
+    button_text_surface.blit(button_text_stroke, (2 + dx, 2 + dy))
+
+# Blit the main text onto the surface
+button_text_surface.blit(button_text, (2, 2))
+
+# Blit the text surface onto the button image
+button_image.blit(button_text_surface, (button_image.get_width() // 2 - button_text_surface.get_width() // 2, button_image.get_height() // 2 - button_text_surface.get_height() // 2))
+
+# Load sound effects
+hover_sound = pygame.mixer.Sound("balancescale/assets/sounds/Hover.mp3")
+click_sound = pygame.mixer.Sound("balancescale/assets/sounds/Clicked.mp3")
 
 def is_button_hovered(mouse_pos, button_rect):
     return button_rect.collidepoint(mouse_pos)
 
 def welcome_screen():
     running = True
+    button_hovered = False
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -49,23 +72,37 @@ def welcome_screen():
             
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
-                button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
                 if is_button_hovered(mouse_pos, button_rect):
+                    click_sound.play()
+                    pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)  # Change cursor back to arrow
+                    loading.loading_screen()  # Call the loading screen function
                     return True
 
         screen.blit(background, (0, 0))
-        screen.blit(text, text_rect)
+        screen.blit(text_surface, text_rect.topleft)
         screen.blit(center_image, center_image_rect)
 
         mouse_pos = pygame.mouse.get_pos()
-        button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
-        current_color = BUTTON_HOVER_COLOR if is_button_hovered(mouse_pos, button_rect) else BUTTON_COLOR
-        draw_button(screen, "Start", button_x, button_y, button_width, button_height, current_color)
+        if is_button_hovered(mouse_pos, button_rect):
+            if not button_hovered:
+                hover_sound.play()
+                button_hovered = True
+            # Change cursor to hand cursor
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
+            # Increase the size of the button and lower the opacity
+            hover_button_image = pygame.transform.scale(button_image, (int(300 * 1.2), int(210 * 1.2)))
+            hover_button_image.set_alpha(int(255 * 0.92))  # Lower opacity by 8%
+            hover_button_rect = hover_button_image.get_rect(center=button_rect.center)
+            screen.blit(hover_button_image, hover_button_rect)
+        else:
+            if button_hovered:
+                button_hovered = False
+            # Change cursor to default cursor
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+            screen.blit(button_image, button_rect)
 
         pygame.display.update()
 
 if __name__ == "__main__":
     if welcome_screen():
-        import simulation
-        simulation.main()
         print("Transitioning to simulation screen...")

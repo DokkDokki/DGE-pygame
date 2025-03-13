@@ -2,6 +2,7 @@ import pygame
 import sys
 import random
 import datetime
+from initialize.display import screen, background # Import the screen and background  
 
 # Initialize Pygame
 pygame.init()
@@ -26,6 +27,11 @@ RIGHT_WEIGHT_COLOR = (255, 0, 0)  # Red for right weights
 
 # Log file
 log_file = open("simulation_log.txt", "w")
+
+# Set up font and text
+font = pygame.font.Font("balancescale/assets/fonts/MISHIMISHI-BLOCK.otf", 60)
+text = font.render("バランススケール", True, (0, 0, 0))
+text_rect = text.get_rect(midtop=(screen.get_width() // 2, 50))
 
 class BalanceScale:
     def __init__(self, position, size, vertical_scale_height=100):
@@ -130,8 +136,8 @@ class Button:
         return False
 
 def main(scale_size=250, vertical_scale_height=100):
-    # Create the balance scale
-    scale = BalanceScale((screen_width / 2, screen_height / 3), scale_size, vertical_scale_height)
+    # Create the balance scale in the middle of the screen
+    scale = BalanceScale((screen_width / 2, screen_height / 2), scale_size, vertical_scale_height)
 
     # Game state
     running = True
@@ -180,7 +186,7 @@ def main(scale_size=250, vertical_scale_height=100):
                 scale.undo_last_action()
                 notification_message = "Last action undone"
             elif reset_button.is_clicked(event):
-                scale = BalanceScale((screen_width / 2, screen_height / 3), scale_size, vertical_scale_height)
+                scale = BalanceScale((screen_width / 2, screen_height / 2), scale_size, vertical_scale_height)
                 notification_message = "System reset"
                 log_file.write("System reset\n")
             elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -238,6 +244,9 @@ def main(scale_size=250, vertical_scale_height=100):
             background_color = SOFT_RED  # Softer Red: Not close
 
         screen.fill(background_color)  # Clear the screen with the background color
+
+        # Blit the title text
+        screen.blit(text, text_rect)
 
         # Update the physics of the balance scale
         if not paused:
