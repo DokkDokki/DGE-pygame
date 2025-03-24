@@ -7,6 +7,14 @@ from constants import *
 # Initialize Pygame
 pygame.init()
 
+# Load and play background music
+pygame.mixer.music.load("balancescale/assets/sounds/BGM2.mp3")
+pygame.mixer.music.play(-1)  # -1 means the music will loop indefinitely
+
+# Function to adjust the volume
+def set_volume(volume):
+    pygame.mixer.music.set_volume(volume)
+
 # Load and scale the center image
 center_image = pygame.image.load("balancescale/assets/images/balancescale.png")
 center_image = pygame.transform.scale(center_image, (350, 350))
@@ -14,20 +22,13 @@ center_image_rect = center_image.get_rect(center=(screen.get_width() // 2, scree
 
 # Set up font and text
 font = pygame.font.Font("balancescale/assets/fonts/MISHIMISHI-BLOCK.otf", 97)
-text = font.render("バランススケール", True, (255, 255, 255))
-text_stroke = font.render("バランススケール", True, (0, 0, 0))
-text_rect = text.get_rect(midtop=(screen.get_width() // 2, 50))
+full_text = "バランススケール"
+text_stroke = font.render(full_text, True, (0, 0, 0))
+text_rect = text_stroke.get_rect(midtop=(screen.get_width() // 2, 50))
 
 # Create a new surface for the text with stroke
 text_surface = pygame.Surface((text_rect.width + 4, text_rect.height + 4), pygame.SRCALPHA)
 text_surface.fill((0, 0, 0, 0))  # Fill with transparent color
-
-# Blit the stroke text onto the surface
-for dx, dy in [(-6, 0), (6, 0), (0, -6), (0, 6)]:
-    text_surface.blit(text_stroke, (2 + dx, 2 + dy))
-
-# Blit the main text onto the surface
-text_surface.blit(text, (2, 2))
 
 # Load the button image
 button_image = pygame.image.load("balancescale/assets/images/button.png")
@@ -64,7 +65,16 @@ def is_button_hovered(mouse_pos, button_rect):
 def welcome_screen():
     running = True
     button_hovered = False
+    text_index = 0
+    text_speed = 0.1  # Adjust this value to control the speed of the text animation
+    last_update_time = pygame.time.get_ticks()
+
     while running:
+        current_time = pygame.time.get_ticks()
+        if current_time - last_update_time > text_speed * 750:
+            text_index = min(text_index + 1, len(full_text))
+            last_update_time = current_time
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -79,6 +89,17 @@ def welcome_screen():
                     return True
 
         screen.blit(background, (0, 0))
+        
+        # Render the text with animation
+        animated_text = full_text[:text_index]
+        text = font.render(animated_text, True, (255, 255, 255))
+        text_stroke = font.render(animated_text, True, (0, 0, 0))
+        
+        text_surface.fill((0, 0, 0, 0))  # Clear the surface
+        for dx, dy in [(-6, 0), (6, 0), (0, -6), (0, 6)]:
+            text_surface.blit(text_stroke, (2 + dx, 2 + dy))
+        text_surface.blit(text, (2, 2))
+        
         screen.blit(text_surface, text_rect.topleft)
         screen.blit(center_image, center_image_rect)
 
@@ -104,5 +125,6 @@ def welcome_screen():
         pygame.display.update()
 
 if __name__ == "__main__":
+    set_volume(0.07)  # Set initial volume to 50%
     if welcome_screen():
         print("Transitioning to simulation screen...")

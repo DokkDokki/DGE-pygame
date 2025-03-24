@@ -28,7 +28,7 @@ def loading_screen():
 
     # Animation loop for 3 seconds
     start_time = time.time()
-    while time.time() - start_time < 3:
+    while time.time() - start_time < 4.3:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
