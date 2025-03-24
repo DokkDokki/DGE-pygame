@@ -3,6 +3,8 @@ import sys
 import numpy as np
 import pymunk
 import time
+import math
+from constants import *
 from initialize.display import screen, background
 
 # Initialize Pygame
@@ -110,38 +112,34 @@ MAX_ANGLE = 45  # Maximum tilt angle in degrees
 
 # Add this after the space initialization
 def create_scale(space):
-    # Create the static body for the scale
-    body = pymunk.Body(body_type=pymunk.Body.STATIC)
+    # Create a DYNAMIC body for the scale instead of static
+    body = pymunk.Body(mass=1000, moment=pymunk.moment_for_segment(1000, (-SCALE_WIDTH//2, 0), (SCALE_WIDTH//2, 0), THICKNESS))
     body.position = SCALE_POS
+    # Pin joint to fix the center in place while allowing rotation
+    joint = pymunk.PinJoint(space.static_body, body, (SCALE_POS[0], SCALE_POS[1]), (0, 0))
     
     # Create the segment shape for the scale
     shape = pymunk.Segment(body, (-SCALE_WIDTH//2, 0), (SCALE_WIDTH//2, 0), THICKNESS)
     shape.friction = 0.5
     shape.elasticity = ELASTICITY
-    shape.collision_type = 2  # Different collision type for the scale
+    shape.collision_type = 2
     
-    # Add the body and shape to the space
-    space.add(body, shape)
+    # Add the body, shape, and joint to the space
+    space.add(body, shape, joint)
     return body, shape
 
-def create_middle_wall(space):
-    # Create the vertical wall in the middle
-    middle_wall = pymunk.Poly.create_box(space.static_body, (100, HEIGHT))
-    middle_wall.body.position = (WIDTH // 2, HEIGHT // 2)
-    middle_wall.collision_type = 3
-    space.add(middle_wall)
-    return middle_wall
-
 class Scale:
-    def __init__(self):
-        self.image = pygame.image.load("balancescale/assets/images/scalebase.png")  # Load your bar image
-        self.image = pygame.transform.scale(self.image, (SCALE_WIDTH, SCALE_HEIGHT))  # Scale the image to the new dimensions
+    def __init__(self, body):
+        self.image = pygame.image.load("balancescale/assets/images/scalebase.png")
+        self.image = pygame.transform.scale(self.image, (SCALE_WIDTH, SCALE_HEIGHT))
         self.rect = self.image.get_rect(center=SCALE_POS)
-        self.angle = 0  # Initial angle of the scale
+        self.body = body  # Store reference to the physics body
         
     def draw(self, screen):
+        # Get the angle from the physics body in degrees
+        angle_degrees = math.degrees(self.body.angle)
         # Rotate the image based on the current angle
-        rotated_image = pygame.transform.rotate(self.image, self.angle)
+        rotated_image = pygame.transform.rotate(self.image, -angle_degrees)  # Negative because pygame and pymunk use opposite rotation directions
         new_rect = rotated_image.get_rect(center=self.rect.center)
         screen.blit(rotated_image, new_rect.topleft)
         
@@ -165,9 +163,16 @@ class Scale:
                     distance = (particle.body.position.x - center_x) / (SCALE_WIDTH/2)
                     right_weight += weight * distance
         
-        # Calculate the angle based on the weight difference
+        # Instead of using apply_torque_impulse, directly set the torque
         weight_diff = left_weight - right_weight
-        self.angle = np.clip(weight_diff * 2, -MAX_ANGLE, MAX_ANGLE)
+        target_angle = np.clip(weight_diff * 0.05, -math.radians(MAX_ANGLE), math.radians(MAX_ANGLE))
+        
+        # Apply torque to move toward target angle
+        current_angle = self.body.angle
+        torque_value = (target_angle - current_angle) * 5000  # Adjust multiplier as needed
+        
+        # Set the torque directly on the body
+        self.body.torque = torque_value
         
         return left_weight, right_weight
 
@@ -191,11 +196,10 @@ def main():
 
     # Create scale
     scale_body, scale_shape = create_scale(space)
-    scale = Scale()
-
-    # Create middle wall
-    middle_wall = create_middle_wall(space)
+    scale = Scale(scale_body)  # Pass the body to the Scale
     
+    # Rest of the function remains unchanged
+
     # Main Game Loop
     while not game_over:
         # Get current mouse position
