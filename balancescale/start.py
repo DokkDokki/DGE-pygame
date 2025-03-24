@@ -1,5 +1,6 @@
 import pygame
 import sys
+import math
 import loading  # Import the loading module
 from initialize.display import screen, background
 from constants import *
@@ -92,15 +93,22 @@ def welcome_screen():
         
         # Render the text with animation
         animated_text = full_text[:text_index]
-        text = font.render(animated_text, True, (255, 255, 255))
-        text_stroke = font.render(animated_text, True, (0, 0, 0))
-        
         text_surface.fill((0, 0, 0, 0))  # Clear the surface
-        for dx, dy in [(-6, 0), (6, 0), (0, -6), (0, 6)]:
-            text_surface.blit(text_stroke, (2 + dx, 2 + dy))
-        text_surface.blit(text, (2, 2))
         
-        screen.blit(text_surface, text_rect.topleft)
+        total_width = sum(font.render(char, True, (255, 255, 255)).get_width() for char in animated_text)
+        start_x = (screen.get_width() - total_width) // 2
+        
+        for i, char in enumerate(animated_text):
+            char_surface = font.render(char, True, (255, 255, 255))
+            char_stroke = font.render(char, True, (0, 0, 0))
+            char_x = start_x + sum(font.render(animated_text[j], True, (255, 255, 255)).get_width() for j in range(i))
+            char_y = text_rect.y + int(10 * math.sin(pygame.time.get_ticks() / 500 + i))
+            
+            for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
+                text_surface.blit(char_stroke, (char_x + dx, char_y + dy))
+            text_surface.blit(char_surface, (char_x, char_y))
+        
+        screen.blit(text_surface, (0, 0))
         screen.blit(center_image, center_image_rect)
 
         mouse_pos = pygame.mouse.get_pos()

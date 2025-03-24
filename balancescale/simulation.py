@@ -50,6 +50,9 @@ WEIGHT_MULTIPLIER = 0.1  # Conversion factor for KG
 
 shape_to_particle = dict()
 
+# Define the specific size values
+SIZE_VALUES = [0.5, 1, 1.5, 2, 2.5, 3, 5, 7, 11, 16]
+
 class Particle:
     def __init__(self, pos, n, space, mapper):
         self.n = n % 11
@@ -220,10 +223,10 @@ def main():
                 current_particle.set_x(mouse_pos[0])
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
-                    selected_size = (selected_size + 1) % len(RADII)
+                    selected_size = (selected_size + 1) % len(SIZE_VALUES)
                     current_particle = PreParticle(mouse_pos[0], selected_size)
                 elif event.key == pygame.K_DOWN:
-                    selected_size = (selected_size - 1) % len(RADII)
+                    selected_size = (selected_size - 1) % len(SIZE_VALUES)
                     current_particle = PreParticle(mouse_pos[0], selected_size)
 
         # Update preview particle position even when not dragging
@@ -255,7 +258,7 @@ def main():
         screen.blit(right_text, (WIDTH - 200, 50))
         
         # Draw size indicator
-        size_text = font.render(f"Size: {selected_size + 1}", True, (0, 0, 0))
+        size_text = font.render(f"Weight: {SIZE_VALUES[selected_size]}", True, (0, 0, 0))
         screen.blit(size_text, (10, 10))
         
         # Single display update
