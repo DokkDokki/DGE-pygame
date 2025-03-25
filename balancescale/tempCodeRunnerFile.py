@@ -1,1 +1,0 @@
-left_plate_position.y += left_plate_image.get_height() / 20

@@ -115,13 +115,14 @@ MAX_ANGLE = 12  # Maximum tilt angle in degrees
 
 # Add this after the space initialization
 def create_scale(space):
-    # Create a DYNAMIC body for the scale instead of static
+    # Create dynamic body for the scale
     body = pymunk.Body(mass=1000, moment=pymunk.moment_for_segment(1000, (-SCALE_WIDTH//2, 0), (SCALE_WIDTH//2, 0), THICKNESS))
     body.position = SCALE_POS
+    
     # Pin joint to fix the center in place while allowing rotation
     joint = pymunk.PinJoint(space.static_body, body, (SCALE_POS[0], SCALE_POS[1]), (0, 0))
     
-    # Create the segment shape for the scale
+    # Create the segment shape for the scale bar
     shape = pymunk.Segment(body, (-SCALE_WIDTH//2, 0), (SCALE_WIDTH//2, 0), THICKNESS)
     shape.friction = 0.5
     shape.elasticity = ELASTICITY
@@ -133,24 +134,153 @@ def create_scale(space):
     scale_bar_shape.elasticity = ELASTICITY
     scale_bar_shape.collision_type = 2
     
-    # Add the body, shapes, and joint to the space
-    space.add(body, shape, scale_bar_shape, joint)
+    # NEW: Add invisible walls on the left plate to catch balls
+    left_plate_width = 120
+    left_plate_height = 40
+    left_wall_height = 80  # Higher walls to prevent balls from escaping
+    
+    # Left plate floor (horizontal barrier)
+    left_plate_floor = pymunk.Segment(
+        body, 
+        (-SCALE_WIDTH//2 - left_plate_width//2, -THICKNESS), 
+        (-SCALE_WIDTH//2 + left_plate_width//2, -THICKNESS), 
+        5
+    )
+    left_plate_floor.friction = 0.9  # High friction to prevent sliding
+    
+    # Left plate left wall (vertical barrier)
+    left_plate_left_wall = pymunk.Segment(
+        body, 
+        (-SCALE_WIDTH//2 - left_plate_width//2, -THICKNESS), 
+        (-SCALE_WIDTH//2 - left_plate_width//2, -THICKNESS - left_wall_height), 
+        5
+    )
+    left_plate_left_wall.friction = 0.9
+    
+    # Left plate right wall (vertical barrier)
+    left_plate_right_wall = pymunk.Segment(
+        body, 
+        (-SCALE_WIDTH//2 + left_plate_width//2, -THICKNESS), 
+        (-SCALE_WIDTH//2 + left_plate_width//2, -THICKNESS - left_wall_height), 
+        5
+    )
+    left_plate_right_wall.friction = 0.9
+    
+    # NEW: Add invisible walls on the right plate to catch balls
+    right_plate_width = 120
+    
+    # Right plate floor (horizontal barrier)
+    right_plate_floor = pymunk.Segment(
+        body, 
+        (SCALE_WIDTH//2 - right_plate_width//2, -THICKNESS), 
+        (SCALE_WIDTH//2 + right_plate_width//2, -THICKNESS), 
+        5
+    )
+    right_plate_floor.friction = 0.9
+    
+    # Right plate left wall (vertical barrier)
+    right_plate_left_wall = pymunk.Segment(
+        body, 
+        (SCALE_WIDTH//2 - right_plate_width//2, -THICKNESS), 
+        (SCALE_WIDTH//2 - right_plate_width//2, -THICKNESS - left_wall_height), 
+        5
+    )
+    right_plate_left_wall.friction = 0.9
+    
+    # Right plate right wall (vertical barrier)
+    right_plate_right_wall = pymunk.Segment(
+        body, 
+        (SCALE_WIDTH//2 + right_plate_width//2, -THICKNESS), 
+        (SCALE_WIDTH//2 + right_plate_width//2, -THICKNESS - left_wall_height), 
+        5
+    )
+    right_plate_right_wall.friction = 0.9
+    
+    # Add all shapes to the space
+    space.add(body, shape, scale_bar_shape, joint,
+              left_plate_floor, left_plate_left_wall, left_plate_right_wall,
+              right_plate_floor, right_plate_left_wall, right_plate_right_wall)
+    
     return body, shape
 
 class Scale:
     def __init__(self, body):
+        # Load the scale platform image
         self.image = pygame.image.load("balancescale/assets/images/scalebase.png")
         self.image = pygame.transform.scale(self.image, (SCALE_WIDTH, SCALE_HEIGHT))
         self.rect = self.image.get_rect(center=SCALE_POS)
-        self.body = body  # Store reference to the physics body
+        
+        # Load the base image
+        try:
+            self.base_image = pygame.image.load("balancescale/assets/images/Base.png")
+            base_width = 150
+            base_height = 180
+            self.base_image = pygame.transform.scale(self.base_image, (base_width, base_height))
+            self.base_rect = self.base_image.get_rect(center=SCALE_POS)
+        except Exception as e:
+            print(f"Error loading base image: {e}")
+            self.base_image = pygame.Surface((150, 180))
+            self.base_image.fill((150, 100, 50))
+            self.base_rect = self.base_image.get_rect(center=SCALE_POS)
+        
+        # Add left and right plates
+        try:
+            # Create smaller plates that will fit at the edges
+            self.plate_image = pygame.image.load("balancescale/assets/images/plate_left.png")
+            plate_width = 500  
+            plate_height = 250  
+            self.plate_image = pygame.transform.scale(self.plate_image, (plate_width, plate_height))
+            
+            # Position them EXACTLY at the left and right edges
+            self.left_plate_pos = (SCALE_POS[0] - SCALE_WIDTH//2, SCALE_POS[1] - THICKNESS)
+            self.right_plate_pos = (SCALE_POS[0] + SCALE_WIDTH//2, SCALE_POS[1] - THICKNESS)
+        except Exception as e:
+            print(f"Error loading plate image: {e}")
+            plate_width = 120
+            plate_height = 40
+            self.plate_image = pygame.Surface((plate_width, plate_height))
+            self.plate_image.fill((200, 170, 100))  # Tan color for plates
+            self.left_plate_pos = (SCALE_POS[0] - SCALE_WIDTH//2, SCALE_POS[1] - THICKNESS)
+            self.right_plate_pos = (SCALE_POS[0] + SCALE_WIDTH//2, SCALE_POS[1] - THICKNESS)
+        
+        self.body = body
         
     def draw(self, screen):
         # Get the angle from the physics body in degrees
         angle_degrees = math.degrees(self.body.angle)
-        # Rotate the image based on the current angle
-        rotated_image = pygame.transform.rotate(self.image, -angle_degrees)  # Negative because pygame and pymunk use opposite rotation directions
+        angle_rad = self.body.angle
+        
+        # Rotate the scale platform image
+        rotated_image = pygame.transform.rotate(self.image, -angle_degrees)
         new_rect = rotated_image.get_rect(center=self.rect.center)
+        
+        # Draw the scale platform first
         screen.blit(rotated_image, new_rect.topleft)
+        
+        # Calculate rotated positions for the plates
+        # Left plate
+        left_offset_x = self.left_plate_pos[0] - SCALE_POS[0]
+        left_offset_y = self.left_plate_pos[1] - SCALE_POS[1]
+        rotated_left_x = SCALE_POS[0] + left_offset_x * math.cos(angle_rad) - left_offset_y * math.sin(angle_rad)
+        rotated_left_y = SCALE_POS[1] + left_offset_x * math.sin(angle_rad) + left_offset_y * math.cos(angle_rad)
+        
+        # Right plate
+        right_offset_x = self.right_plate_pos[0] - SCALE_POS[0]
+        right_offset_y = self.right_plate_pos[1] - SCALE_POS[1]
+        rotated_right_x = SCALE_POS[0] + right_offset_x * math.cos(angle_rad) - right_offset_y * math.sin(angle_rad)
+        rotated_right_y = SCALE_POS[1] + right_offset_x * math.sin(angle_rad) + right_offset_y * math.cos(angle_rad)
+        
+        # Rotate the plate images
+        rotated_plate = pygame.transform.rotate(self.plate_image, -angle_degrees)
+        
+        # Draw the plates
+        left_plate_rect = rotated_plate.get_rect(center=(rotated_left_x, rotated_left_y))
+        right_plate_rect = rotated_plate.get_rect(center=(rotated_right_x, rotated_right_y))
+        screen.blit(rotated_plate, left_plate_rect.topleft)
+        screen.blit(rotated_plate, right_plate_rect.topleft)
+        
+        # Draw the base last (on top)
+        screen.blit(self.base_image, self.base_rect.topleft)
         
     def calculate_weight_distribution(self, particles):
         left_weight = 0
@@ -172,13 +302,18 @@ class Scale:
                     distance = (particle.body.position.x - center_x) / (SCALE_WIDTH/2)
                     right_weight += weight * distance
         
-        # Instead of using apply_torque_impulse, directly set the torque
+        # Reduce sensitivity for more realistic rotation
         weight_diff = left_weight - right_weight
-        target_angle = np.clip(weight_diff * 0.05, -math.radians(MAX_ANGLE), math.radians(MAX_ANGLE))
         
-        # Apply torque to move toward target angle
+        # Reduce angle multiplier from 0.05 to 0.03 for less extreme rotation
+        target_angle = np.clip(weight_diff * 0.03, -math.radians(MAX_ANGLE), math.radians(MAX_ANGLE))
+        
+        # Add damping to the angle calculation to prevent oscillation
         current_angle = self.body.angle
-        torque_value = (target_angle - current_angle) * 5000  # Adjust multiplier as needed
+        damped_target = target_angle * 0.7 + current_angle * 0.3  # Add damping
+        
+        # Reduce torque multiplier from 5000 to 3000 for smoother movement
+        torque_value = (damped_target - current_angle) * 3000
         
         # Set the torque directly on the body
         self.body.torque = torque_value
