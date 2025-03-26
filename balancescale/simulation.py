@@ -111,10 +111,10 @@ SCALE_HEIGHT = 300 # Height of the scale bar remains the same
 SCALE_POS = (WIDTH // 2, HEIGHT // 2 + 50)  # Adjusted center position of the scale
 SCALE_LEFT = SCALE_POS[0] - SCALE_WIDTH // 2
 SCALE_RIGHT = SCALE_POS[0] + SCALE_WIDTH // 2
-MAX_ANGLE = 12  # Maximum tilt angle in degrees
+MAX_ANGLE = 10  # Maximum tilt angle in degrees
 
 # Add this after the space initialization
-def create_scale(space):
+def create_scale(space): 
     # Create dynamic body for the scale
     body = pymunk.Body(mass=1000, moment=pymunk.moment_for_segment(1000, (-SCALE_WIDTH//2, 0), (SCALE_WIDTH//2, 0), THICKNESS))
     body.position = SCALE_POS
@@ -281,42 +281,61 @@ class Scale:
         
         # Draw the base last (on top)
         screen.blit(self.base_image, self.base_rect.topleft)
-        
+
     def calculate_weight_distribution(self, particles):
         left_weight = 0
         right_weight = 0
         total_weight = 0
         center_x = SCALE_POS[0]
         
-        # First calculate total weight
+        # First calculate total weight and remove off-screen particles
         for particle in particles:
             if particle.alive:
+                # Check if particle is off screen
+                if particle.body.position.y > HEIGHT:
+                    particle.alive = False
+                    continue
+                    
+                # Calculate base weight without distance multiplier
                 weight = particle.radius * WEIGHT_MULTIPLIER
                 total_weight += weight
+                
+                # Calculate normalized distance from center (0 to 1)
+                distance = abs(particle.body.position.x - center_x) / (SCALE_WIDTH/2)
+                
+                # Apply weight based on side
                 if particle.body.position.x < center_x:
-                    # Calculate weight based on distance from center
-                    distance = (center_x - particle.body.position.x) / (SCALE_WIDTH/2)
                     left_weight += weight * distance
                 else:
-                    # Calculate weight based on distance from center
-                    distance = (particle.body.position.x - center_x) / (SCALE_WIDTH/2)
                     right_weight += weight * distance
         
-        # Reduce sensitivity for more realistic rotation
+        # Enforce 25 degree limit
+        current_angle_degrees = math.degrees(self.body.angle)
+        if abs(current_angle_degrees) >= MAX_ANGLE:
+            # If we've hit the limit, stop rotation in that direction
+            if (current_angle_degrees > 0 and left_weight > right_weight) or \
+               (current_angle_degrees < 0 and right_weight > left_weight):
+                self.body.angular_velocity = 0
+                return left_weight, right_weight
+        
+        # Calculate target angle with stricter limits and increased sensitivity
         weight_diff = left_weight - right_weight
+        target_angle = np.clip(weight_diff * 0.4, -math.radians(MAX_ANGLE), math.radians(MAX_ANGLE))  # Increased from 0.1
         
-        # Reduce angle multiplier from 0.05 to 0.03 for less extreme rotation
-        target_angle = np.clip(weight_diff * 0.03, -math.radians(MAX_ANGLE), math.radians(MAX_ANGLE))
-        
-        # Add damping to the angle calculation to prevent oscillation
+        # Add less damping for faster movement
         current_angle = self.body.angle
-        damped_target = target_angle * 0.7 + current_angle * 0.3  # Add damping
+        damped_target = target_angle * 1.8 + current_angle * 0.05  # Changed from 1.5/0.1
         
-        # Reduce torque multiplier from 5000 to 3000 for smoother movement
-        torque_value = (damped_target - current_angle) * 3000
+        # Calculate torque with higher value for faster response
+        torque_value = (damped_target - current_angle) * 24000  # Increased from 6000
         
         # Set the torque directly on the body
         self.body.torque = torque_value
+        
+        # Hard limit on angle
+        if abs(self.body.angle) > math.radians(MAX_ANGLE):
+            self.body.angle = math.copysign(math.radians(MAX_ANGLE), self.body.angle)
+            self.body.angular_velocity = 0
         
         return left_weight, right_weight
 
@@ -330,7 +349,60 @@ space.gravity = (0, GRAVITY)
 space.damping = DAMPING
 space.collision_bias = BIAS
 
+# Constants for the button
+BUTTON_TEXT_COLOR = (255, 255, 255)  # White color for button text
+button_image = pygame.image.load("balancescale/assets/images/Button.png")  # Load button image once
+BUTTON_FONT = pygame.font.Font("balancescale/assets/fonts/MISHIMISHI-BLOCK.otf", 48)  # Load custom font
+
+class ImageButton:
+    def __init__(self, text, position, size):
+        self.text = text
+        self.position = position
+        self.size = size
+        self.original_image = button_image  # Store reference to original image
+        self.image = pygame.transform.scale(self.original_image, size)
+        self.rect = self.image.get_rect(topleft=position)
+        self.font = BUTTON_FONT  # Use the custom font
+        self.hovered = False
+        self.hand_cursor = pygame.SYSTEM_CURSOR_HAND
+        self.arrow_cursor = pygame.SYSTEM_CURSOR_ARROW
+
+    def draw(self, screen):
+        mouse_pos = pygame.mouse.get_pos()
+        is_hovered = self.rect.collidepoint(mouse_pos)
+        
+        if is_hovered:
+            pygame.mouse.set_cursor(self.hand_cursor)
+            if not self.hovered:
+                self.hovered = True
+                self.image = pygame.transform.scale(self.original_image, 
+                                                 (int(self.size[0] * 1.1), int(self.size[1] * 1.1)))
+                self.rect = self.image.get_rect(center=self.rect.center)
+        else:
+            if self.hovered:
+                self.hovered = False
+                self.image = pygame.transform.scale(self.original_image, self.size)
+                self.rect = self.image.get_rect(topleft=self.position)
+
+        # Draw the button
+        screen.blit(self.image, self.rect.topleft)
+        text_surf = self.font.render(self.text, True, BUTTON_TEXT_COLOR)
+        text_rect = text_surf.get_rect(center=self.rect.center)
+        screen.blit(text_surf, text_rect)
+        
+        return is_hovered
+    
+    def is_clicked(self, event):
+        """Check if the button was clicked."""
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  # Left click
+            return self.rect.collidepoint(event.pos)
+        return False
+
 def main():
+    # Create buttons
+    start_button = ImageButton("スタート", (50, HEIGHT - 200), (310, 200))
+    reset_button = ImageButton("リセット", (397, HEIGHT - 200), (310, 200))
+
     # Initialize game state
     game_over = False
     current_particle = PreParticle(WIDTH // 2, 0)
@@ -349,6 +421,11 @@ def main():
         # Get current mouse position
         mouse_pos = pygame.mouse.get_pos()
 
+        # Check if mouse is over any button
+        button_hovered = (start_button.draw(screen) or reset_button.draw(screen))
+        if not button_hovered:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+
         # Handle events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -356,16 +433,20 @@ def main():
                 sys.exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
-                    new_particle = current_particle.release(space, shape_to_particle)
-                    particles.append(new_particle)
-                    current_particle = PreParticle(mouse_pos[0], selected_size)
+                    if not button_hovered and not dragging:  # Only create particle if not clicking button and not dragging
+                        new_particle = current_particle.release(space, shape_to_particle)
+                        particles.append(new_particle)
+                        # Create new preview particle at current mouse position
+                        current_particle = PreParticle(mouse_pos[0], selected_size)
                 elif event.button == 3:  # Right click
-                    dragging = True
+                    if not button_hovered:  # Only allow dragging if not over button
+                        dragging = True
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 3:  # Right click release
                     dragging = False
-            elif event.type == pygame.MOUSEMOTION and dragging:
-                current_particle.set_x(mouse_pos[0])
+            elif event.type == pygame.MOUSEMOTION:
+                if dragging:  # Only move preview particle when dragging
+                    current_particle.set_x(mouse_pos[0])
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
                     selected_size = (selected_size + 1) % len(SIZE_VALUES)
@@ -373,20 +454,37 @@ def main():
                 elif event.key == pygame.K_DOWN:
                     selected_size = (selected_size - 1) % len(SIZE_VALUES)
                     current_particle = PreParticle(mouse_pos[0], selected_size)
+            elif start_button.is_clicked(event):
+                # Handle start button click
+                pass
+            elif reset_button.is_clicked(event):
+                # Reset the simulation
+                for particle in particles:
+                    if particle.alive:
+                        particle.kill(space)
+                particles = []
+                current_particle = PreParticle(WIDTH // 2, 0)
 
-        # Update preview particle position even when not dragging
+        # Update preview particle position only when not dragging
         if not dragging:
             current_particle.set_x(mouse_pos[0])
 
+        # Clean up fallen particles
+        for particle in particles[:]:  # Create a copy of the list to modify while iterating
+            if not particle.alive:
+                particles.remove(particle)
+                
         # Update physics
         space.step(1/FPS)
 
         # Calculate weight distribution
         left_weight, right_weight = scale.calculate_weight_distribution(particles)
         
-        # Single draw section
+        # Draw everything
         screen.fill(BG_COLOR)
         scale.draw(screen)
+        start_button.draw(screen)
+        reset_button.draw(screen)
         
         # Draw all particles
         for particle in particles:

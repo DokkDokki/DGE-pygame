@@ -29,9 +29,6 @@ left_plate_image = pygame.transform.scale(left_plate_image, (500, 500))
 right_plate_image = pygame.image.load("balancescale/assets/images/plate_right.png")
 right_plate_image = pygame.transform.scale(right_plate_image, (500, 500))
 
-# Load the button image
-button_image = pygame.image.load("balancescale/assets/images/button.png")
-
 # Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -43,6 +40,10 @@ BUTTON_HOVER_COLOR = (170, 170, 170)
 BUTTON_TEXT_COLOR = BLACK
 LEFT_WEIGHT_COLOR = (0, 0, 255)  # Blue for left weights
 RIGHT_WEIGHT_COLOR = (255, 0, 0)  # Red for right weights
+
+# Constants for button text color and button image
+BUTTON_TEXT_COLOR = (0, 0, 0)  # Black color for button text
+button_image = pygame.image.load("balancescale/assets/images/Button.png")  # Load button image once
 
 # Log file
 log_file = open("simulation_log.txt", "w")
@@ -155,7 +156,8 @@ class ImageButton:
         self.text = text
         self.position = position
         self.size = size
-        self.image = pygame.transform.scale(button_image, size)
+        self.original_image = button_image  # Store reference to original image
+        self.image = pygame.transform.scale(self.original_image, size)
         self.rect = self.image.get_rect(topleft=position)
         self.font = pygame.font.Font(None, 36)
         self.hovered = False
@@ -165,12 +167,13 @@ class ImageButton:
         if self.rect.collidepoint(mouse_pos):
             if not self.hovered:
                 self.hovered = True
-                self.image = pygame.transform.scale(button_image, (int(self.size[0] * 1.1), int(self.size[1] * 1.1)))
+                self.image = pygame.transform.scale(self.original_image, 
+                                                 (int(self.size[0] * 1.1), int(self.size[1] * 1.1)))
                 self.rect = self.image.get_rect(center=self.rect.center)
         else:
             if self.hovered:
                 self.hovered = False
-                self.image = pygame.transform.scale(button_image, self.size)
+                self.image = pygame.transform.scale(self.original_image, self.size)
                 self.rect = self.image.get_rect(topleft=self.position)
         
         screen.blit(self.image, self.rect.topleft)
