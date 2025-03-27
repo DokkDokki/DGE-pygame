@@ -213,8 +213,8 @@ class Scale:
         # Load the base image
         try:
             self.base_image = pygame.image.load("balancescale/assets/images/Base.png")
-            base_width = 150
-            base_height = 180
+            base_width = 500
+            base_height = 600
             self.base_image = pygame.transform.scale(self.base_image, (base_width, base_height))
             self.base_rect = self.base_image.get_rect(center=SCALE_POS)
         except Exception as e:
@@ -227,7 +227,7 @@ class Scale:
         try:
             # Create smaller plates that will fit at the edges
             self.plate_image = pygame.image.load("balancescale/assets/images/plate_left.png")
-            plate_width = 1000  
+            plate_width = 1500  
             plate_height = 250  
             self.plate_image = pygame.transform.scale(self.plate_image, (plate_width, plate_height))
             
