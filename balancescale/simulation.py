@@ -352,7 +352,7 @@ space.collision_bias = BIAS
 # Constants for the button
 BUTTON_TEXT_COLOR = (255, 255, 255)  # White color for button text
 button_image = pygame.image.load("balancescale/assets/images/Button.png")  # Load button image once
-BUTTON_FONT = pygame.font.Font("balancescale/assets/fonts/MISHIMISHI-BLOCK.otf", 48)  # Load custom font
+BUTTON_FONT = pygame.font.Font("balancescale/assets/fonts/NotoSansJP-Regular.ttf", 30)  # Load custom font
 
 class ImageButton:
     def __init__(self, text, position, size):
@@ -398,55 +398,151 @@ class ImageButton:
             return self.rect.collidepoint(event.pos)
         return False
 
+# Modify the main game loop to handle paused state correctly
 def main():
-    # Create buttons
-    start_button = ImageButton("スタート", (50, HEIGHT - 200), (310, 200))
-    reset_button = ImageButton("リセット", (397, HEIGHT - 200), (310, 200))
+    # Add action history to track changes
+    action_history = []  # Stack of actions performed
+
+    # Calculate button dimensions for 4 buttons in a row
+    button_width = 180  # Narrower buttons to fit all four
+    button_height = 160  # Keep a good height for visibility
+    button_spacing = 20  # Spacing between buttons
+    button_y = HEIGHT - 180  # Position for all buttons
+    
+    # Change button labels to Japanese
+    start_button = ImageButton("スタート", (50, button_y), (button_width, button_height))
+    undo_button = ImageButton("アンドゥ", (50 + button_width + button_spacing, button_y), 
+                             (button_width, button_height))
+    stop_button = ImageButton("ストップ", (50 + (button_width + button_spacing) * 2, button_y), 
+                            (button_width, button_height))
+    reset_button = ImageButton("リセット", (50 + (button_width + button_spacing) * 3, button_y), 
+                             (button_width, button_height))
 
     # Initialize game state
     game_over = False
+    paused = False  # Track pause state
     current_particle = PreParticle(WIDTH // 2, 0)
     particles = []
     dragging = False
     selected_size = 0  # Initial size index
-
+    left_weight = 0
+    right_weight = 0
+    
     # Create scale
     scale_body, scale_shape = create_scale(space)
     scale = Scale(scale_body)  # Pass the body to the Scale
     
-    # Rest of the function remains unchanged
-
-    # Main Game Loop
+    # Main game loop
     while not game_over:
         # Get current mouse position
         mouse_pos = pygame.mouse.get_pos()
-
-        # Check if mouse is over any button
-        button_hovered = (start_button.draw(screen) or reset_button.draw(screen))
-        if not button_hovered:
-            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
-
-        # Handle events
+        
+        # REMOVE THE SECOND EVENT LOOP! Keep only one event handling section
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+                
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left click
-                    if not button_hovered and not dragging:  # Only create particle if not clicking button and not dragging
+                    if start_button.rect.collidepoint(event.pos):
+                        print("Start button clicked")
+                        
+                        # Simply ensure the simulation is running (not paused)
+                        if paused:
+                            paused = False
+                            stop_button.text = "ストップ"  # Reset stop button text to "Pause"
+                        
+                        # No need to create balanced weights or clear particles
+                        # We just want the simulation to start/continue
+                        
+                    elif reset_button.rect.collidepoint(event.pos):
+                        print("Reset button clicked")
+                        # Save current state before resetting
+                        old_particles = particles.copy()
+                        old_angle = scale.body.angle
+                        
+                        # Reset everything
+                        for particle in particles:
+                            if particle.alive:
+                                particle.kill(space)
+                        particles = []
+                        current_particle = PreParticle(WIDTH // 2, 0)
+                        scale.body.angle = 0
+                        scale.body.angular_velocity = 0
+                        scale.body.torque = 0
+                        selected_size = 0
+                        
+                        # Record action for undo
+                        action_history.append({
+                            "type": "reset", 
+                            "particles": old_particles,
+                            "angle": old_angle,
+                            "size": selected_size
+                        })
+                        
+                    elif undo_button.rect.collidepoint(event.pos):
+                        print("Undo button clicked")
+                        if action_history:
+                            # Get the last action
+                            action = action_history.pop()
+                            
+                            # Handle different action types
+                            if action["type"] == "add_particle":
+                                # Remove the last added particle
+                                if particles:
+                                    last_particle = particles.pop()
+                                    if last_particle.alive:
+                                        last_particle.kill(space)
+                                        
+                            elif action["type"] == "clear" or action["type"] == "reset":
+                                # Clear current particles first
+                                for particle in particles:
+                                    if particle.alive:
+                                        particle.kill(space)
+                                particles = []
+                                
+                                # Restore old particles
+                                for old_particle in action["particles"]:
+                                    if old_particle.alive:
+                                        # Need to recreate the particles with same properties
+                                        new_particle = Particle(
+                                            old_particle.body.position, 
+                                            old_particle.n, 
+                                            space, 
+                                            shape_to_particle
+                                        )
+                                        particles.append(new_particle)
+                                
+                                # For reset actions, also restore angle
+                                if action["type"] == "reset":
+                                    scale.body.angle = action["angle"]
+                    
+                    elif stop_button.rect.collidepoint(event.pos):
+                        print("Stop button clicked")
+                        # Always pause the simulation when stop is clicked
+                        paused = True
+                        # No need to change button text since it's not toggling anymore
+                    
+                    # Only create particle if not clicking buttons
+                    elif not dragging:
                         new_particle = current_particle.release(space, shape_to_particle)
                         particles.append(new_particle)
-                        # Create new preview particle at current mouse position
                         current_particle = PreParticle(mouse_pos[0], selected_size)
+                        
+                        # Record this add action
+                        action_history.append({"type": "add_particle"})
+                        
                 elif event.button == 3:  # Right click
-                    if not button_hovered:  # Only allow dragging if not over button
-                        dragging = True
+                    dragging = True
+                    
             elif event.type == pygame.MOUSEBUTTONUP:
-                if event.button == 3:  # Right click release
+                if event.button == 3:
                     dragging = False
+                    
             elif event.type == pygame.MOUSEMOTION:
-                if dragging:  # Only move preview particle when dragging
-                    current_particle.set_x(mouse_pos[0])
+                current_particle.set_x(mouse_pos[0])
+                
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
                     selected_size = (selected_size + 1) % len(SIZE_VALUES)
@@ -454,37 +550,34 @@ def main():
                 elif event.key == pygame.K_DOWN:
                     selected_size = (selected_size - 1) % len(SIZE_VALUES)
                     current_particle = PreParticle(mouse_pos[0], selected_size)
-            elif start_button.is_clicked(event):
-                # Handle start button click
-                pass
-            elif reset_button.is_clicked(event):
-                # Reset the simulation
-                for particle in particles:
-                    if particle.alive:
-                        particle.kill(space)
-                particles = []
-                current_particle = PreParticle(WIDTH // 2, 0)
-
-        # Update preview particle position only when not dragging
-        if not dragging:
-            current_particle.set_x(mouse_pos[0])
-
-        # Clean up fallen particles
-        for particle in particles[:]:  # Create a copy of the list to modify while iterating
-            if not particle.alive:
-                particles.remove(particle)
-                
-        # Update physics
-        space.step(1/FPS)
-
-        # Calculate weight distribution
-        left_weight, right_weight = scale.calculate_weight_distribution(particles)
+        
+        # Only update physics if not paused
+        if not paused:
+            space.step(1/FPS)
+            left_weight, right_weight = scale.calculate_weight_distribution(particles)
+        
+        # Drawing code remains the same
+        screen.fill(BG_COLOR)
+        
+        # Draw pause overlay when paused
+        if paused:
+            pause_overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            pause_overlay.fill((0, 0, 0, 64))
+            screen.blit(pause_overlay, (0, 0))
+            
+            pause_font = pygame.font.Font("balancescale/assets/fonts/MISHIMISHI-BLOCK.otf", 72)
+            pause_text = pause_font.render("ストップ", True, (255, 255, 255))
+            text_rect = pause_text.get_rect(center=(WIDTH//2, HEIGHT//4))
+            screen.blit(pause_text, text_rect)
+            
+        # Rest of drawing code...
         
         # Draw everything
-        screen.fill(BG_COLOR)
         scale.draw(screen)
         start_button.draw(screen)
         reset_button.draw(screen)
+        undo_button.draw(screen)
+        stop_button.draw(screen)
         
         # Draw all particles
         for particle in particles:
