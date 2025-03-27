@@ -285,10 +285,9 @@ class Scale:
     def calculate_weight_distribution(self, particles):
         left_weight = 0
         right_weight = 0
-        total_weight = 0
         center_x = SCALE_POS[0]
         
-        # First calculate total weight and remove off-screen particles
+        # Calculate weights without the distance multiplier
         for particle in particles:
             if particle.alive:
                 # Check if particle is off screen
@@ -296,43 +295,39 @@ class Scale:
                     particle.alive = False
                     continue
                     
-                # Calculate base weight without distance multiplier
-                weight = particle.radius * WEIGHT_MULTIPLIER
-                total_weight += weight
-                
-                # Calculate normalized distance from center (0 to 1)
-                distance = abs(particle.body.position.x - center_x) / (SCALE_WIDTH/2)
+                # Get the actual weight from SIZE_VALUES
+                weight = SIZE_VALUES[particle.n]
                 
                 # Apply weight based on side
                 if particle.body.position.x < center_x:
-                    left_weight += weight * distance
+                    left_weight += weight
                 else:
-                    right_weight += weight * distance
+                    right_weight += weight
         
-        # Enforce 25 degree limit
-        current_angle_degrees = math.degrees(self.body.angle)
-        if abs(current_angle_degrees) >= MAX_ANGLE:
-            # If we've hit the limit, stop rotation in that direction
-            if (current_angle_degrees > 0 and left_weight > right_weight) or \
-               (current_angle_degrees < 0 and right_weight > left_weight):
-                self.body.angular_velocity = 0
-                return left_weight, right_weight
-        
-        # Calculate target angle with stricter limits and increased sensitivity
+        # Calculate weight difference
         weight_diff = left_weight - right_weight
-        target_angle = np.clip(weight_diff * 0.4, -math.radians(MAX_ANGLE), math.radians(MAX_ANGLE))  # Increased from 0.1
         
-        # Add less damping for faster movement
+        # Improvements for more realistic physics:
+        
+        # 1. Use more gentle angle mapping (0.2 instead of 0.5)
+        target_angle = np.clip(weight_diff * 0.2, -math.radians(MAX_ANGLE), math.radians(MAX_ANGLE))
+        
+        # 2. Apply physics with inertia - simulate real-world mechanics
         current_angle = self.body.angle
-        damped_target = target_angle * 1.8 + current_angle * 0.05  # Changed from 1.5/0.1
         
-        # Calculate torque with higher value for faster response
-        torque_value = (damped_target - current_angle) * 24000  # Increased from 6000
+        # 3. Better damped target for smoother movement (more inertia)
+        damped_target = target_angle * 0.8 + current_angle * 0.7  # More influence from current position
         
-        # Set the torque directly on the body
-        self.body.torque = torque_value
+        # 4. Lower torque for more gradual movement
+        torque_value = (damped_target - current_angle) * 15000  # Reduced from 35000
         
-        # Hard limit on angle
+        # 5. Apply natural damping based on angular velocity
+        damping_torque = -self.body.angular_velocity * 5000  # Stronger damping
+        
+        # Apply combined forces
+        self.body.torque = torque_value + damping_torque
+        
+        # Keep hard limit on angle
         if abs(self.body.angle) > math.radians(MAX_ANGLE):
             self.body.angle = math.copysign(math.radians(MAX_ANGLE), self.body.angle)
             self.body.angular_velocity = 0

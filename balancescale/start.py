@@ -158,6 +158,58 @@ def welcome_screen():
 
         pygame.display.update()
 
+def calculate_weight_distribution(self, particles):
+    left_weight = 0
+    right_weight = 0
+    center_x = SCALE_POS[0]
+    
+    # Calculate weights without the distance multiplier
+    for particle in particles:
+        if particle.alive:
+            # Check if particle is off screen
+            if particle.body.position.y > HEIGHT:
+                particle.alive = False
+                continue
+                
+            # Get the actual weight from SIZE_VALUES
+            weight = SIZE_VALUES[particle.n]
+            
+            # Apply weight based on side
+            if particle.body.position.x < center_x:
+                left_weight += weight
+            else:
+                right_weight += weight
+    
+    # Special balancing logic for when weights are equal
+    if abs(left_weight - right_weight) < 0.01:
+        # Apply a gentle centering force
+        centering_torque = -self.body.angle * 10000
+        damping_torque = -self.body.angular_velocity * 8000
+        self.body.torque = centering_torque + damping_torque
+        return left_weight, right_weight
+    
+    # Normal case - weights are different
+    weight_diff = left_weight - right_weight
+    
+    # Make the scale more responsive but still realistic
+    target_angle = np.clip(weight_diff * 0.3, -math.radians(MAX_ANGLE), math.radians(MAX_ANGLE))
+    
+    current_angle = self.body.angle
+    damped_target = target_angle * 0.9 + current_angle * 0.5
+    
+    # Apply more responsive torque
+    torque_value = (damped_target - current_angle) * 25000
+    damping_torque = -self.body.angular_velocity * 6000
+    
+    self.body.torque = torque_value + damping_torque
+    
+    # Keep hard limit on angle
+    if abs(self.body.angle) > math.radians(MAX_ANGLE):
+        self.body.angle = math.copysign(math.radians(MAX_ANGLE), self.body.angle)
+        self.body.angular_velocity = 0
+    
+    return left_weight, right_weight
+
 if __name__ == "__main__":
     set_volume(0.07)  # Set initial volume to 50%
     if welcome_screen():
