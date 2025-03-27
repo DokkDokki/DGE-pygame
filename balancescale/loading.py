@@ -1,5 +1,6 @@
 import pygame
 import time
+import math
 from initialize.display import screen, background
 
 def loading_screen():
@@ -7,36 +8,71 @@ def loading_screen():
     pygame.init()
 
     # Background color
-    screen.fill((0, 0, 255))  # Clear the screen with blue color
+    screen.fill((0, 0, 255))
+
+    # Set up font and text with increased size
+    font = pygame.font.Font("balancescale/assets/fonts/MISHIMISHI-BLOCK.otf", 192)
+    characters = list("ローディング")
+    char_surfaces = []
+    char_strokes = []
     
-    # Set up font and text
-    font = pygame.font.Font("balancescale/assets/fonts/MISHIMISHI-BLOCK.otf", 97)
-    text = font.render("ローディング", True, (255, 255, 255))
-    text_stroke = font.render("ローディング", True, (0, 0, 0))
-    text_rect = text.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
+    # Create individual character surfaces
+    for char in characters:
+        char_text = font.render(char, True, (255, 255, 255))
+        char_stroke = font.render(char, True, (0, 0, 0))
+        char_surfaces.append(char_text)
+        char_strokes.append(char_stroke)
 
-    # Create a new surface for the text with stroke
-    text_surface = pygame.Surface((text_rect.width + 4, text_rect.height + 4), pygame.SRCALPHA)
-    text_surface.fill((0, 0, 0, 0))  # Fill with transparent color
+    # Calculate total width of text
+    total_width = sum(surface.get_width() for surface in char_surfaces)
+    spacing = 15  # Increased spacing for larger text
+    total_width += spacing * (len(characters) - 1)
+    
+    # Set up animation parameters
+    char_bounce_offsets = [0] * len(characters)
+    wave_speed = 2.0  # Controls the speed of the wave
+    wave_amplitude = 40  # Controls the height of the bounce
+    wave_frequency = 1.5  # Controls how spread out the wave is
 
-    # Blit the stroke text onto the surface
-    for dx, dy in [(-6, 0), (6, 0), (0, -6), (0, 6)]:
-        text_surface.blit(text_stroke, (2 + dx, 2 + dy))
-
-    # Blit the main text onto the surface
-    text_surface.blit(text, (2, 2))
-
-    # Animation loop for 3 seconds
+    # Animation loop
     start_time = time.time()
-    while time.time() - start_time < 4.3:
+    while time.time() - start_time < 6.0:
+        current_time = time.time() - start_time
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 return
 
+        # Clear screen and draw background
         screen.blit(background, (0, 0))
-        screen.blit(text_surface, text_rect.topleft)
-        pygame.display.update()
+        
+        # Calculate starting X position to center the text
+        start_x = (screen.get_width() - total_width) // 2
+        current_x = start_x
+
+        # Update and render each character
+        for i in range(len(characters)):
+            # Calculate wave offset using sine function
+            phase = (current_time * wave_speed) - (i / wave_frequency)
+            char_bounce_offsets[i] = abs(math.sin(phase)) * wave_amplitude
+
+            # Draw character stroke with increased thickness
+            for dx, dy in [(-8, 0), (8, 0), (0, -8), (0, 8)]:
+                pos = (current_x + dx, 
+                      screen.get_height()//2 - char_strokes[i].get_height()//2 + dy - char_bounce_offsets[i])
+                screen.blit(char_strokes[i], pos)
+
+            # Draw main character
+            pos = (current_x,
+                  screen.get_height()//2 - char_surfaces[i].get_height()//2 - char_bounce_offsets[i])
+            screen.blit(char_surfaces[i], pos)
+
+            # Move to next character position
+            current_x += char_surfaces[i].get_width() + spacing
+
+        pygame.display.flip()
+        pygame.time.delay(16)
 
     # Transition to simulation
     import simulation

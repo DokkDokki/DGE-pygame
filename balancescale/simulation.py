@@ -39,13 +39,13 @@ COLORS = [
 FPS = 240
 RADII = [17, 25, 32, 38, 45, 55, 64, 75, 87, 100]  # Particle sizes
 THICKNESS = 15     # Wall thickness
-DENSITY = 0.001    # Particle density
-ELASTICITY = 0.1   # Bounce factor
+DENSITY = 0.01    # Particle density
+ELASTICITY = 0.2   # Bounce factor
 IMPULSE = 10000    # Force applied
-GRAVITY = 2000     # Gravity strength
-DAMPING = 0.8      # Energy loss factor
+GRAVITY = 10000     # Gravity strength
+DAMPING = 1      # Energy loss factor
 NEXT_DELAY = FPS
-NEXT_STEPS = 20
+NEXT_STEPS = 30
 BIAS = 0.00001
 POINTS = [1, 3, 6, 10, 15, 21, 28, 36, 45, 55]
 WEIGHT_MULTIPLIER = 0.1  # Conversion factor for KG
@@ -359,10 +359,10 @@ class ImageButton:
         self.text = text
         self.position = position
         self.size = size
-        self.original_image = button_image  # Store reference to original image
+        self.original_image = button_image
         self.image = pygame.transform.scale(self.original_image, size)
         self.rect = self.image.get_rect(topleft=position)
-        self.font = BUTTON_FONT  # Use the custom font
+        self.font = BUTTON_FONT
         self.hovered = False
         self.hand_cursor = pygame.SYSTEM_CURSOR_HAND
         self.arrow_cursor = pygame.SYSTEM_CURSOR_ARROW
@@ -384,19 +384,26 @@ class ImageButton:
                 self.image = pygame.transform.scale(self.original_image, self.size)
                 self.rect = self.image.get_rect(topleft=self.position)
 
-        # Draw the button
+        # Draw the button background
         screen.blit(self.image, self.rect.topleft)
-        text_surf = self.font.render(self.text, True, BUTTON_TEXT_COLOR)
-        text_rect = text_surf.get_rect(center=self.rect.center)
-        screen.blit(text_surf, text_rect)
+
+        # Create text surfaces for stroke and main text
+        text_stroke = self.font.render(self.text, True, (0, 0, 0))  # Black stroke
+        text_main = self.font.render(self.text, True, BUTTON_TEXT_COLOR)  # White text
+
+        # Get text position
+        text_rect = text_main.get_rect(center=self.rect.center)
+
+        # Draw stroke effect
+        stroke_positions = [(-2, 0), (2, 0), (0, -2), (0, 2)]
+        for dx, dy in stroke_positions:
+            stroke_pos = (text_rect.x + dx, text_rect.y + dy)
+            screen.blit(text_stroke, stroke_pos)
+
+        # Draw main text
+        screen.blit(text_main, text_rect)
         
         return is_hovered
-    
-    def is_clicked(self, event):
-        """Check if the button was clicked."""
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  # Left click
-            return self.rect.collidepoint(event.pos)
-        return False
 
 # Modify the main game loop to handle paused state correctly
 def main():
