@@ -134,21 +134,21 @@ def create_scale(space):
     scale_bar_shape.elasticity = ELASTICITY
     scale_bar_shape.collision_type = 2
     
-    # NEW: Add invisible walls on the left plate to catch balls
-    left_plate_width = 120
-    left_plate_height = 40
-    left_wall_height = 80  # Higher walls to prevent balls from escaping
+    # EXPANDED: Make plates wider and walls higher
+    left_plate_width = 200  # Increased from 120
+    left_plate_height = 60   # Increased from 40
+    left_wall_height = 120   # Increased from 80
     
-    # Left plate floor (horizontal barrier)
+    # Left plate floor (horizontal barrier) - wider
     left_plate_floor = pymunk.Segment(
         body, 
         (-SCALE_WIDTH//2 - left_plate_width//2, -THICKNESS), 
         (-SCALE_WIDTH//2 + left_plate_width//2, -THICKNESS), 
         5
     )
-    left_plate_floor.friction = 0.9  # High friction to prevent sliding
+    left_plate_floor.friction = 0.9
     
-    # Left plate left wall (vertical barrier)
+    # Left plate left wall (vertical barrier) - taller
     left_plate_left_wall = pymunk.Segment(
         body, 
         (-SCALE_WIDTH//2 - left_plate_width//2, -THICKNESS), 
@@ -157,7 +157,7 @@ def create_scale(space):
     )
     left_plate_left_wall.friction = 0.9
     
-    # Left plate right wall (vertical barrier)
+    # Left plate right wall (vertical barrier) - taller
     left_plate_right_wall = pymunk.Segment(
         body, 
         (-SCALE_WIDTH//2 + left_plate_width//2, -THICKNESS), 
@@ -166,10 +166,10 @@ def create_scale(space):
     )
     left_plate_right_wall.friction = 0.9
     
-    # NEW: Add invisible walls on the right plate to catch balls
-    right_plate_width = 120
+    # EXPANDED: Right plate with same dimensions as left
+    right_plate_width = 200  # Increased from 120
     
-    # Right plate floor (horizontal barrier)
+    # Right plate floor (horizontal barrier) - wider
     right_plate_floor = pymunk.Segment(
         body, 
         (SCALE_WIDTH//2 - right_plate_width//2, -THICKNESS), 
@@ -178,7 +178,7 @@ def create_scale(space):
     )
     right_plate_floor.friction = 0.9
     
-    # Right plate left wall (vertical barrier)
+    # Right plate left wall (vertical barrier) - taller
     right_plate_left_wall = pymunk.Segment(
         body, 
         (SCALE_WIDTH//2 - right_plate_width//2, -THICKNESS), 
@@ -187,7 +187,7 @@ def create_scale(space):
     )
     right_plate_left_wall.friction = 0.9
     
-    # Right plate right wall (vertical barrier)
+    # Right plate right wall (vertical barrier) - taller
     right_plate_right_wall = pymunk.Segment(
         body, 
         (SCALE_WIDTH//2 + right_plate_width//2, -THICKNESS), 
@@ -352,7 +352,7 @@ space.collision_bias = BIAS
 # Constants for the button
 BUTTON_TEXT_COLOR = (255, 255, 255)  # White color for button text
 button_image = pygame.image.load("balancescale/assets/images/Button.png")  # Load button image once
-BUTTON_FONT = pygame.font.Font("balancescale/assets/fonts/NotoSansJP-Regular.ttf", 30)  # Load custom font
+BUTTON_FONT = pygame.font.Font("balancescale/assets/fonts/MISHIMISHI-BLOCK.otf", 30)  # Load custom font
 
 class ImageButton:
     def __init__(self, text, position, size):

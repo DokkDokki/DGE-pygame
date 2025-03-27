@@ -67,9 +67,12 @@ def welcome_screen():
     running = True
     button_hovered = False
     text_index = 0
-    text_speed = 0.1  # Adjust this value to control the speed of the text animation
+    text_speed = 0.1  # Speed control
     last_update_time = pygame.time.get_ticks()
 
+    # Pre-calculate character widths
+    char_widths = [font.render(char, True, (255, 255, 255)).get_width() for char in full_text]
+    
     while running:
         current_time = pygame.time.get_ticks()
         if current_time - last_update_time > text_speed * 750:
@@ -85,48 +88,57 @@ def welcome_screen():
                 mouse_pos = pygame.mouse.get_pos()
                 if is_button_hovered(mouse_pos, button_rect):
                     click_sound.play()
-                    pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)  # Change cursor back to arrow
-                    loading.loading_screen()  # Call the loading screen function
+                    pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+                    loading.loading_screen()
                     return True
 
+        # Draw background and image
         screen.blit(background, (0, 0))
+        screen.blit(center_image, center_image_rect)
         
-        # Render the text with animation
+        # Animate title text
         animated_text = full_text[:text_index]
-        text_surface.fill((0, 0, 0, 0))  # Clear the surface
         
-        total_width = sum(font.render(char, True, (255, 255, 255)).get_width() for char in animated_text)
+        # Calculate total width of visible text
+        total_width = sum(char_widths[:text_index])
         start_x = (screen.get_width() - total_width) // 2
         
+        # Keep track of current x position
+        current_x = start_x
+        
+        # Draw each character
         for i, char in enumerate(animated_text):
+            # Create character surfaces
             char_surface = font.render(char, True, (255, 255, 255))
             char_stroke = font.render(char, True, (0, 0, 0))
-            char_x = start_x + sum(font.render(animated_text[j], True, (255, 255, 255)).get_width() for j in range(i))
-            char_y = text_rect.y + int(10 * math.sin(pygame.time.get_ticks() / 500 + i))
             
+            # Calculate y position with wave effect
+            char_y = 50 + int(10 * math.sin(pygame.time.get_ticks() / 500 + i))
+            
+            # Draw stroke first (black outline)
             for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
-                text_surface.blit(char_stroke, (char_x + dx, char_y + dy))
-            text_surface.blit(char_surface, (char_x, char_y))
-        
-        screen.blit(text_surface, (0, 0))
-        screen.blit(center_image, center_image_rect)
+                screen.blit(char_stroke, (current_x + dx, char_y + dy))
+            
+            # Draw main character
+            screen.blit(char_surface, (current_x, char_y))
+            
+            # Move x position for next character
+            current_x += char_widths[i]
 
+        # Draw button with hover effect
         mouse_pos = pygame.mouse.get_pos()
         if is_button_hovered(mouse_pos, button_rect):
             if not button_hovered:
                 hover_sound.play()
                 button_hovered = True
-            # Change cursor to hand cursor
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
-            # Increase the size of the button and lower the opacity
             hover_button_image = pygame.transform.scale(button_image, (int(300 * 1.2), int(210 * 1.2)))
-            hover_button_image.set_alpha(int(255 * 0.92))  # Lower opacity by 8%
+            hover_button_image.set_alpha(int(255 * 0.92))
             hover_button_rect = hover_button_image.get_rect(center=button_rect.center)
             screen.blit(hover_button_image, hover_button_rect)
         else:
             if button_hovered:
                 button_hovered = False
-            # Change cursor to default cursor
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
             screen.blit(button_image, button_rect)
 
