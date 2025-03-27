@@ -135,9 +135,9 @@ def create_scale(space):
     scale_bar_shape.collision_type = 2
     
     # EXPANDED: Make plates wider and walls higher
-    left_plate_width = 200  # Increased from 120
+    left_plate_width = 500  # Increased from 120
     left_plate_height = 60   # Increased from 40
-    left_wall_height = 120   # Increased from 80
+    left_wall_height = 240   # Increased from 80
     
     # Left plate floor (horizontal barrier) - wider
     left_plate_floor = pymunk.Segment(
@@ -167,7 +167,7 @@ def create_scale(space):
     left_plate_right_wall.friction = 0.9
     
     # EXPANDED: Right plate with same dimensions as left
-    right_plate_width = 200  # Increased from 120
+    right_plate_width = 500  # Increased from 120
     
     # Right plate floor (horizontal barrier) - wider
     right_plate_floor = pymunk.Segment(
@@ -227,7 +227,7 @@ class Scale:
         try:
             # Create smaller plates that will fit at the edges
             self.plate_image = pygame.image.load("balancescale/assets/images/plate_left.png")
-            plate_width = 500  
+            plate_width = 1000  
             plate_height = 250  
             self.plate_image = pygame.transform.scale(self.plate_image, (plate_width, plate_height))
             
