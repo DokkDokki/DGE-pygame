@@ -1,12 +1,12 @@
 import pygame
 
 # Set up the display and window's title
-width, height = 1280, 720
+width, height = 1920, 1080
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption('Balance Scale')
 
 #Set the icon
-icon = pygame.image.load("balancescale/assets/images/balancescale.png")
+icon = pygame.image.load("balancescale/assets/images/Logo.png")
 pygame.display.set_icon(icon)
 
 #Set up background

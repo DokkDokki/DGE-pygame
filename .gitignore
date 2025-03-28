@@ -2,3 +2,4 @@
 *.log
 /balancescale_pymunk
 *.txt
+__pycache__/
